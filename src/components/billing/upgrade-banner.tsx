@@ -6,23 +6,32 @@ import { Crown, Sparkles, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 interface UpgradeBannerProps {
   currentPlan: "free" | "monthly" | "lifetime";
   email?: string;
+  userId?: string;
 }
 
-export function UpgradeBanner({ currentPlan, email }: UpgradeBannerProps) {
+export function UpgradeBanner({ currentPlan, email, userId }: UpgradeBannerProps) {
   const [paddle, setPaddle] = useState<Paddle | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Determine the theme dynamically based on the dark mode class
     const isDark = document.documentElement.classList.contains("dark");
+    const paddleEnv = (process.env.NEXT_PUBLIC_PADDLE_ENV as "sandbox" | "production") || "sandbox";
+    const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
+
+    if (!token) {
+      console.warn("Paddle client token not configured.");
+      return;
+    }
     
     initializePaddle({
-      environment: "sandbox", // use "production" in prod
-      token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
+      environment: paddleEnv,
+      token,
       eventCallback: (event) => {
         if (event.name === "checkout.completed") {
           window.location.href = "/app/dashboard?success=true";
@@ -31,6 +40,7 @@ export function UpgradeBanner({ currentPlan, email }: UpgradeBannerProps) {
       checkout: {
         settings: {
           theme: isDark ? "dark" : "light",
+          variant: "one-page",
         }
       }
     }).then(
@@ -43,12 +53,16 @@ export function UpgradeBanner({ currentPlan, email }: UpgradeBannerProps) {
   }, []);
 
   const openCheckout = (priceId: string) => {
-    if (!paddle) return;
+    if (!paddle) {
+      toast.error("Checkout service is initializing. Please try again in a moment.");
+      return;
+    }
     setLoading(true);
     
     paddle.Checkout.open({
       items: [{ priceId, quantity: 1 }],
       customer: email ? { email } : undefined,
+      customData: userId ? { user_id: userId } : undefined,
     });
     
     setLoading(false);
@@ -115,8 +129,14 @@ export function UpgradeBanner({ currentPlan, email }: UpgradeBannerProps) {
                {loading ? "Loading..." : "Upgrade to Pro"}
              </Button>
           ) : (
-             <Button variant="outline" className="w-full text-destructive hover:bg-destructive/10">
-               Cancel Subscription
+             <Button 
+               variant="outline" 
+               onClick={() => {
+                 toast.info("To cancel or modify your active subscription, please check the confirmation receipt email sent by Paddle, or reach out to support@listguard.io.");
+               }}
+               className="w-full text-destructive hover:bg-destructive/10"
+             >
+               Manage / Cancel Subscription
              </Button>
           )}
         </CardFooter>

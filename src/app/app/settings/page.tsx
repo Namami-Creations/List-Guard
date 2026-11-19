@@ -360,7 +360,7 @@ export default function SettingsPage() {
           {activeTab === "billing" && (
             <section className="space-y-6">
               <h2 className="text-xl font-bold">Subscription & Plan</h2>
-              <UpgradeBanner currentPlan={currentPlan} email={user?.email} />
+              <UpgradeBanner currentPlan={currentPlan} email={user?.email} userId={user?.id} />
 
               <div className="pt-4 border-t border-border">
                 <div className="flex items-center justify-between">
